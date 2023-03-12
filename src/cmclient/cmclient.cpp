@@ -16,13 +16,22 @@ using namespace aos::sm::launcher;
  * Public
  **********************************************************************************************************************/
 
+CMClient::~CMClient()
+{
+    atomic_set_bit(&mFinishReadTrigger, 0);
+    mThread.Join();
+}
+
 aos::Error CMClient::Init(LauncherItf& launcher)
 {
     LOG_DBG() << "Initialize CM client";
 
     mLauncher = &launcher;
 
-    auto err = mThread.Run();
+    auto err = mThread.Run([this](void*) {
+        auto ret = vch_connect(1, "SM_VCHAN_PATH", nullptr);
+        this->ProcessMessages();
+    });
     if (!err.IsNone()) {
         return err;
     }
@@ -52,9 +61,19 @@ void CMClient::ProcessMessages()
 {
     auto i = 0;
 
-    while (true) {
+    while (!atomic_test_bit(&mFinishReadTrigger, 0)) {
         LOG_DBG() << "Process message: " << i++;
 
-        sleep(2);
+        LOG_DBG() << "Try  form channel: ";
+        auto read = vch_read(nullptr, nullptr, 100);
+        LOG_DBG() << "READ  form channel: " << read;
+
+        if (read == -1) {
+            continue;
+        }
+
+        LOG_DBG() << "Try  write: ";
+        auto ret = vch_write(nullptr, nullptr, 100);
+        LOG_DBG() << "Try  done: ";
     }
 }

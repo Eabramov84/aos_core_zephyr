@@ -8,8 +8,13 @@
 #ifndef CMCLIENT_HPP_
 #define CMCLIENT_HPP_
 
+#include "zephyr/sys/atomic.h"
+
 #include <aos/common/thread.hpp>
 #include <aos/sm/launcher.hpp>
+extern "C" {
+#include <vch.h>
+}
 
 /**
  * CM client instance.
@@ -21,9 +26,15 @@ public:
      */
     CMClient()
         : mLauncher(nullptr)
-        , mThread([this](void*) { this->ProcessMessages(); })
+        , mThread()
     {
+        atomic_clear_bit(&mFinishReadTrigger, 0);
     }
+
+    /**
+     * Destructor.
+     */
+    ~CMClient();
 
     /**
      * Initializes CM client instance.
@@ -51,6 +62,7 @@ public:
 private:
     aos::sm::launcher::LauncherItf* mLauncher;
     aos::Thread<>                   mThread;
+    atomic_t                        mFinishReadTrigger;
 
     void ProcessMessages();
 };
